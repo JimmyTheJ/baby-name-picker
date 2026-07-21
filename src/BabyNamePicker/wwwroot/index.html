@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baby Name Picker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            blush: { 50: '#fff7fb', 100: '#ffe8f3', 500: '#ec4899', 600: '#db2777', 700: '#be185d' },
+            sky: { 50: '#f0f9ff', 500: '#0ea5e9', 600: '#0284c7' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="min-h-screen bg-gradient-to-b from-blush-50 via-white to-sky-50 text-slate-800">
+  <div class="mx-auto max-w-3xl px-4 py-6 pb-24">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl font-bold tracking-tight text-blush-700 sm:text-4xl">Baby Name Picker</h1>
+      <p class="mt-2 text-slate-600">Search, explore popularity by year, or pick a random name.</p>
+    </header>
+
+    <nav class="mb-6 flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200" role="tablist">
+      <button id="tab-search" class="tab-btn flex-1 rounded-lg px-4 py-3 text-sm font-semibold" role="tab" aria-selected="true">Search</button>
+      <button id="tab-year" class="tab-btn flex-1 rounded-lg px-4 py-3 text-sm font-semibold" role="tab" aria-selected="false">By Year</button>
+    </nav>
+
+    <section id="panel-search" class="space-y-4">
+      <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+        <label class="block text-sm font-medium text-slate-700" for="search-input">Search names or nicknames</label>
+        <input id="search-input" type="search" placeholder="Try Emma, Liz, or Alex..." autocomplete="off"
+          class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none ring-blush-500 focus:border-blush-500 focus:ring-2">
+
+        <fieldset class="mt-4">
+          <legend class="text-sm font-medium text-slate-700">Gender</legend>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <label class="gender-chip"><input type="radio" name="gender" value="Any" checked class="sr-only"><span>Any</span></label>
+            <label class="gender-chip"><input type="radio" name="gender" value="Male" class="sr-only"><span>Boy</span></label>
+            <label class="gender-chip"><input type="radio" name="gender" value="Female" class="sr-only"><span>Girl</span></label>
+            <label class="gender-chip"><input type="radio" name="gender" value="Unisex" class="sr-only"><span>Unisex</span></label>
+          </div>
+        </fieldset>
+
+        <div class="mt-5 flex flex-wrap gap-2">
+          <button id="random-btn" class="btn-primary">Random</button>
+          <button id="search-btn" class="btn-secondary">Search</button>
+        </div>
+      </div>
+
+      <div id="search-results" class="space-y-3"></div>
+    </section>
+
+    <section id="panel-year" class="hidden space-y-4">
+      <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-slate-700" for="year-select">Year</label>
+            <select id="year-select" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500"></select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700" for="year-gender">Gender</label>
+            <select id="year-gender" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500">
+              <option value="Male">Boys</option>
+              <option value="Female">Girls</option>
+            </select>
+          </div>
+        </div>
+        <button id="year-load-btn" class="btn-primary mt-4">Show Top Names</button>
+      </div>
+      <div id="year-results" class="space-y-2"></div>
+    </section>
+
+    <section id="detail-panel" class="hidden fixed inset-x-0 bottom-0 z-20 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl ring-1 ring-slate-200 sm:mx-auto sm:max-w-3xl">
+      <div class="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 id="detail-name" class="text-2xl font-bold text-slate-900"></h2>
+          <p id="detail-gender" class="text-sm text-slate-600"></p>
+        </div>
+        <button id="detail-close" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700" aria-label="Close">Close</button>
+      </div>
+      <div id="detail-slant" class="mb-4"></div>
+      <div id="detail-nicknames" class="mb-4"></div>
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Popularity by year</h3>
+        <div id="detail-years" class="mt-2 space-y-1"></div>
+      </div>
+    </section>
+    <div id="detail-backdrop" class="hidden fixed inset-0 z-10 bg-slate-900/40"></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

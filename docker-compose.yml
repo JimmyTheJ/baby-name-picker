@@ -1,0 +1,21 @@
+services:
+  baby-name-picker:
+    build: .
+    container_name: baby-name-picker
+    ports:
+      - "8080:8080"
+    volumes:
+      - baby-name-picker-data:/data
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Data Source=/data/babynames.db
+    networks:
+      - workspace
+    restart: unless-stopped
+
+volumes:
+  baby-name-picker-data:
+
+networks:
+  workspace:
+    external: true
