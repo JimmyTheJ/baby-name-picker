@@ -46,10 +46,24 @@ public sealed class NameQueryService(AppDbContext db)
         return name is null ? null : ToDetail(name);
     }
 
-    public async Task<NameDetailDto?> GetRandomAsync(string? gender, CancellationToken cancellationToken = default)
+    public async Task<NameDetailDto?> GetRandomAsync(
+        string? query,
+        string? gender,
+        CancellationToken cancellationToken = default)
     {
-        var names = db.Names.AsNoTracking().AsQueryable();
+        var names = db.Names
+            .AsNoTracking()
+            .Include(n => n.Nicknames)
+            .AsQueryable();
         names = ApplyGenderFilter(names, gender);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var term = query.Trim();
+            names = names.Where(n =>
+                EF.Functions.Like(n.Name, $"%{term}%") ||
+                n.Nicknames.Any(nn => EF.Functions.Like(nn.Value, $"%{term}%")));
+        }
 
         var count = await names.CountAsync(cancellationToken);
         if (count == 0)

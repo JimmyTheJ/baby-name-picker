@@ -34,9 +34,9 @@ var api = app.MapGroup("/api");
 api.MapGet("/names", async (string? q, string? gender, NameQueryService service, CancellationToken ct) =>
     Results.Ok(await service.SearchAsync(q, gender, ct)));
 
-api.MapGet("/names/random", async (string? gender, NameQueryService service, CancellationToken ct) =>
+api.MapGet("/names/random", async (string? q, string? gender, NameQueryService service, CancellationToken ct) =>
 {
-    var result = await service.GetRandomAsync(gender, ct);
+    var result = await service.GetRandomAsync(q, gender, ct);
     return result is null ? Results.NotFound() : Results.Ok(result);
 });
 
