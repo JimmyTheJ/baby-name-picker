@@ -21,15 +21,7 @@ const els = {
   searchResults: document.getElementById('search-results'),
   yearSelect: document.getElementById('year-select'),
   yearGender: document.getElementById('year-gender'),
-  yearResults: document.getElementById('year-results'),
-  detailPanel: document.getElementById('detail-panel'),
-  detailBackdrop: document.getElementById('detail-backdrop'),
-  detailClose: document.getElementById('detail-close'),
-  detailName: document.getElementById('detail-name'),
-  detailGender: document.getElementById('detail-gender'),
-  detailSlant: document.getElementById('detail-slant'),
-  detailNicknames: document.getElementById('detail-nicknames'),
-  detailYears: document.getElementById('detail-years')
+  yearResults: document.getElementById('year-results')
 };
 
 function getSelectedGender() {
@@ -91,16 +83,20 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
+function renderEmptyResults(container) {
+  container.innerHTML = '<p class="rounded-xl bg-white p-4 text-center text-slate-600 ring-1 ring-slate-200">No names found. Try another search.</p>';
+}
+
 async function runSearch() {
   const results = await api.get(`/api/names?${getSearchParams().toString()}`);
   els.searchResults.replaceChildren();
 
   if (!results.length) {
-    els.searchResults.innerHTML = '<p class="rounded-xl bg-white p-4 text-center text-slate-600 ring-1 ring-slate-200">No names found. Try another search.</p>';
+    renderEmptyResults(els.searchResults);
     return;
   }
 
-  results.forEach(item => els.searchResults.appendChild(renderNameCard(item, showDetail)));
+  results.forEach(item => els.searchResults.appendChild(renderNameCard(item, id => showDetail(id, els.searchResults))));
 }
 
 function getSearchParams() {
@@ -113,8 +109,13 @@ function getSearchParams() {
 }
 
 async function runRandom() {
-  const result = await api.get(`/api/names/random?${getSearchParams().toString()}`);
-  if (result) await showDetail(result.id);
+  const response = await fetch(`/api/names/random?${getSearchParams().toString()}`);
+  if (response.status === 404) {
+    renderEmptyResults(els.searchResults);
+    return;
+  }
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  renderDetail(els.searchResults, await response.json());
 }
 
 async function loadYears() {
@@ -151,43 +152,60 @@ async function loadPopularity() {
     row.addEventListener('click', async () => {
       const matches = await api.get(`/api/names?q=${encodeURIComponent(item.name)}`);
       const exact = matches.find(m => m.name.toLowerCase() === item.name.toLowerCase());
-      if (exact) await showDetail(exact.id);
+      if (exact) await showDetail(exact.id, els.yearResults);
     });
     els.yearResults.appendChild(row);
   });
 }
 
-async function showDetail(id) {
-  const detail = await api.get(`/api/names/${id}`);
-  els.detailName.textContent = detail.name;
-  els.detailGender.textContent = genderLabel(detail.gender);
-  els.detailSlant.innerHTML = renderSlant(detail.maleShare);
+function renderDetail(container, detail) {
+  container.replaceChildren();
+
+  const panel = document.createElement('article');
+  panel.className = 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200';
+
+  const header = document.createElement('div');
+  header.className = 'mb-4';
+  header.innerHTML = `
+    <h2 class="text-2xl font-bold text-slate-900">${escapeHtml(detail.name)}</h2>
+    <p class="text-sm text-slate-600">${genderLabel(detail.gender)}</p>`;
+  panel.appendChild(header);
+
+  const slant = document.createElement('div');
+  slant.className = 'mb-4';
+  slant.innerHTML = renderSlant(detail.maleShare);
+  panel.appendChild(slant);
 
   if (detail.nicknames?.length) {
-    els.detailNicknames.innerHTML = `
+    const nicknames = document.createElement('div');
+    nicknames.className = 'mb-4';
+    nicknames.innerHTML = `
       <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Nicknames</h3>
       <p class="mt-1 text-slate-700">${escapeHtml(detail.nicknames.join(', '))}</p>`;
-  } else {
-    els.detailNicknames.innerHTML = '';
+    panel.appendChild(nicknames);
   }
 
-  els.detailYears.replaceChildren();
+  const yearsSection = document.createElement('div');
+  yearsSection.innerHTML = '<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Popularity by year</h3>';
+  const yearsList = document.createElement('div');
+  yearsList.className = 'mt-2 space-y-1';
   detail.yearStats.forEach(stat => {
     const row = document.createElement('div');
     row.className = 'flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm';
     row.innerHTML = `
       <span class="font-medium text-slate-800">${stat.year}</span>
       <span class="text-slate-600">#${stat.rank} ${genderLabel(stat.sex)} · ${stat.count.toLocaleString()}</span>`;
-    els.detailYears.appendChild(row);
+    yearsList.appendChild(row);
   });
+  yearsSection.appendChild(yearsList);
+  panel.appendChild(yearsSection);
 
-  els.detailPanel.classList.remove('hidden');
-  els.detailBackdrop.classList.remove('hidden');
+  container.appendChild(panel);
 }
 
-function hideDetail() {
-  els.detailPanel.classList.add('hidden');
-  els.detailBackdrop.classList.add('hidden');
+async function showDetail(id, container) {
+  const detail = await api.get(`/api/names/${id}`);
+  renderDetail(container, detail);
 }
 
 function setTab(tab) {
@@ -215,8 +233,6 @@ els.searchInput.addEventListener('input', scheduleSearch);
 document.querySelectorAll('input[name="gender"]').forEach(input => {
   input.addEventListener('change', scheduleSearch);
 });
-els.detailClose.addEventListener('click', hideDetail);
-els.detailBackdrop.addEventListener('click', hideDetail);
 
 function showError(error) {
   console.error(error);
