@@ -17,12 +17,10 @@ const els = {
   panelSearch: document.getElementById('panel-search'),
   panelYear: document.getElementById('panel-year'),
   searchInput: document.getElementById('search-input'),
-  searchBtn: document.getElementById('search-btn'),
   randomBtn: document.getElementById('random-btn'),
   searchResults: document.getElementById('search-results'),
   yearSelect: document.getElementById('year-select'),
   yearGender: document.getElementById('year-gender'),
-  yearLoadBtn: document.getElementById('year-load-btn'),
   yearResults: document.getElementById('year-results'),
   detailPanel: document.getElementById('detail-panel'),
   detailBackdrop: document.getElementById('detail-backdrop'),
@@ -94,13 +92,7 @@ function escapeHtml(value) {
 }
 
 async function runSearch() {
-  const q = els.searchInput.value.trim();
-  const gender = getSelectedGender();
-  const params = new URLSearchParams();
-  if (q) params.set('q', q);
-  if (gender !== 'Any') params.set('gender', gender);
-
-  const results = await api.get(`/api/names?${params.toString()}`);
+  const results = await api.get(`/api/names?${getSearchParams().toString()}`);
   els.searchResults.replaceChildren();
 
   if (!results.length) {
@@ -111,11 +103,17 @@ async function runSearch() {
   results.forEach(item => els.searchResults.appendChild(renderNameCard(item, showDetail)));
 }
 
-async function runRandom() {
+function getSearchParams() {
+  const q = els.searchInput.value.trim();
   const gender = getSelectedGender();
   const params = new URLSearchParams();
+  if (q) params.set('q', q);
   if (gender !== 'Any') params.set('gender', gender);
-  const result = await api.get(`/api/names/random?${params.toString()}`);
+  return params;
+}
+
+async function runRandom() {
+  const result = await api.get(`/api/names/random?${getSearchParams().toString()}`);
   if (result) await showDetail(result.id);
 }
 
@@ -201,13 +199,21 @@ function setTab(tab) {
   els.panelYear.classList.toggle('hidden', isSearch);
 }
 
+let searchDebounceTimer;
+
+function scheduleSearch() {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => runSearch().catch(showError), 300);
+}
+
 els.tabSearch.addEventListener('click', () => setTab('search'));
 els.tabYear.addEventListener('click', () => setTab('year'));
-els.searchBtn.addEventListener('click', () => runSearch().catch(showError));
 els.randomBtn.addEventListener('click', () => runRandom().catch(showError));
-els.yearLoadBtn.addEventListener('click', () => loadPopularity().catch(showError));
-els.searchInput.addEventListener('keydown', event => {
-  if (event.key === 'Enter') runSearch().catch(showError);
+els.yearSelect.addEventListener('change', () => loadPopularity().catch(showError));
+els.yearGender.addEventListener('change', () => loadPopularity().catch(showError));
+els.searchInput.addEventListener('input', scheduleSearch);
+document.querySelectorAll('input[name="gender"]').forEach(input => {
+  input.addEventListener('change', scheduleSearch);
 });
 els.detailClose.addEventListener('click', hideDetail);
 els.detailBackdrop.addEventListener('click', hideDetail);
@@ -217,5 +223,7 @@ function showError(error) {
   alert('Something went wrong. Please try again.');
 }
 
-loadYears().catch(showError);
+loadYears()
+  .then(() => loadPopularity())
+  .catch(showError);
 runSearch().catch(showError);
