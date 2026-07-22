@@ -64,6 +64,49 @@ namespace BabyNamePicker.Data.Migrations
                     b.ToTable("Names");
                 });
 
+            modelBuilder.Entity("BabyNamePicker.Models.NameMetadata", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EnrichedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EnrichmentSource")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Meaning")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("NameId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Origins")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Pronunciation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Themes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Variants")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NameId")
+                        .IsUnique();
+
+                    b.ToTable("NameMetadata");
+                });
+
             modelBuilder.Entity("BabyNamePicker.Models.NameYearStat", b =>
                 {
                     b.Property<int>("Id")
@@ -140,7 +183,20 @@ namespace BabyNamePicker.Data.Migrations
 
             modelBuilder.Entity("BabyNamePicker.Models.BabyName", b =>
                 {
+                    b.Navigation("Metadata");
+
                     b.Navigation("YearStats");
+                });
+
+            modelBuilder.Entity("BabyNamePicker.Models.NameMetadata", b =>
+                {
+                    b.HasOne("BabyNamePicker.Models.BabyName", "Name")
+                        .WithOne("Metadata")
+                        .HasForeignKey("BabyNamePicker.Models.NameMetadata", "NameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Name");
                 });
 #pragma warning restore 612, 618
         }

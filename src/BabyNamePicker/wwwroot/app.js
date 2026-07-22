@@ -21,11 +21,17 @@ const els = {
   searchResults: document.getElementById('search-results'),
   yearSelect: document.getElementById('year-select'),
   yearGender: document.getElementById('year-gender'),
+  yearLimit: document.getElementById('year-limit'),
   yearResults: document.getElementById('year-results')
 };
 
 function getSelectedGender() {
   const selected = document.querySelector('input[name="gender"]:checked');
+  return selected ? selected.value : 'Any';
+}
+
+function getSelectedRarity() {
+  const selected = document.querySelector('input[name="rarity"]:checked');
   return selected ? selected.value : 'Any';
 }
 
@@ -36,6 +42,20 @@ function genderLabel(gender) {
     case 'Unisex': return 'Unisex';
     default: return gender;
   }
+}
+
+function rarityLabel(peakRank) {
+  if (!peakRank) return '';
+  if (peakRank <= 100) return 'Top 100';
+  if (peakRank <= 500) return 'Top 500';
+  return 'Uncommon';
+}
+
+function rarityBadgeClass(peakRank) {
+  if (!peakRank) return 'bg-slate-100 text-slate-600';
+  if (peakRank <= 100) return 'bg-blush-100 text-blush-700';
+  if (peakRank <= 500) return 'bg-sky-100 text-sky-700';
+  return 'bg-slate-100 text-slate-600';
 }
 
 function slantLabel(maleShare) {
@@ -63,10 +83,16 @@ function renderSlant(maleShare) {
 function renderNameCard(item, onClick) {
   const card = document.createElement('article');
   card.className = 'name-card';
+  const badge = item.peakRank
+    ? `<span class="rounded-full px-2 py-0.5 text-xs font-semibold ${rarityBadgeClass(item.peakRank)}">${rarityLabel(item.peakRank)}</span>`
+    : '';
   card.innerHTML = `
     <div class="flex items-start justify-between gap-3">
       <div>
-        <h3 class="text-lg font-bold text-slate-900">${escapeHtml(item.name)}</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-bold text-slate-900">${escapeHtml(item.name)}</h3>
+          ${badge}
+        </div>
         <p class="text-sm text-slate-600">${genderLabel(item.gender)}</p>
       </div>
       ${item.nicknames?.length ? `<p class="text-xs text-slate-500">${escapeHtml(item.nicknames.slice(0, 3).join(', '))}</p>` : ''}
@@ -102,9 +128,11 @@ async function runSearch() {
 function getSearchParams() {
   const q = els.searchInput.value.trim();
   const gender = getSelectedGender();
+  const rarity = getSelectedRarity();
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (gender !== 'Any') params.set('gender', gender);
+  if (rarity !== 'Any') params.set('rarity', rarity);
   return params;
 }
 
@@ -132,7 +160,8 @@ async function loadYears() {
 async function loadPopularity() {
   const year = els.yearSelect.value;
   const gender = els.yearGender.value;
-  const results = await api.get(`/api/popularity?year=${year}&gender=${gender}`);
+  const limit = els.yearLimit.value;
+  const results = await api.get(`/api/popularity?year=${year}&gender=${gender}&limit=${limit}`);
   els.yearResults.replaceChildren();
 
   results.forEach(item => {
@@ -158,6 +187,60 @@ async function loadPopularity() {
   });
 }
 
+function renderMetadata(metadata) {
+  if (!metadata) return '';
+
+  const sections = [];
+  if (metadata.meaning) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Meaning</h3>
+        <p class="mt-1 text-slate-700">${escapeHtml(metadata.meaning)}</p>
+      </div>`);
+  }
+  if (metadata.origins?.length) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Origin</h3>
+        <p class="mt-1 text-slate-700">${escapeHtml(metadata.origins.join(', '))}</p>
+      </div>`);
+  }
+  if (metadata.pronunciation) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Pronunciation</h3>
+        <p class="mt-1 text-slate-700">${escapeHtml(metadata.pronunciation)}</p>
+      </div>`);
+  }
+  if (metadata.description) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">About</h3>
+        <p class="mt-1 text-slate-700">${escapeHtml(metadata.description)}</p>
+      </div>`);
+  }
+  if (metadata.themes?.length) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Themes</h3>
+        <div class="mt-2 flex flex-wrap gap-2">
+          ${metadata.themes.map(theme => `<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">${escapeHtml(theme)}</span>`).join('')}
+        </div>
+      </div>`);
+  }
+  if (metadata.variants?.length) {
+    sections.push(`
+      <div>
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Variants</h3>
+        <p class="mt-1 text-slate-700">${escapeHtml(metadata.variants.join(', '))}</p>
+      </div>`);
+  }
+
+  return sections.length
+    ? `<div class="mb-4 space-y-4 rounded-xl bg-slate-50 p-4">${sections.join('')}</div>`
+    : '';
+}
+
 function renderDetail(container, detail) {
   container.replaceChildren();
 
@@ -166,8 +249,14 @@ function renderDetail(container, detail) {
 
   const header = document.createElement('div');
   header.className = 'mb-4';
+  const peakBadge = detail.peakRank
+    ? `<span class="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${rarityBadgeClass(detail.peakRank)}">Peak #${detail.peakRank}</span>`
+    : '';
   header.innerHTML = `
-    <h2 class="text-2xl font-bold text-slate-900">${escapeHtml(detail.name)}</h2>
+    <div class="flex items-center flex-wrap gap-1">
+      <h2 class="text-2xl font-bold text-slate-900">${escapeHtml(detail.name)}</h2>
+      ${peakBadge}
+    </div>
     <p class="text-sm text-slate-600">${genderLabel(detail.gender)}</p>`;
   panel.appendChild(header);
 
@@ -175,6 +264,12 @@ function renderDetail(container, detail) {
   slant.className = 'mb-4';
   slant.innerHTML = renderSlant(detail.maleShare);
   panel.appendChild(slant);
+
+  if (detail.metadata) {
+    const metadata = document.createElement('div');
+    metadata.innerHTML = renderMetadata(detail.metadata);
+    panel.appendChild(metadata);
+  }
 
   if (detail.nicknames?.length) {
     const nicknames = document.createElement('div');
@@ -188,7 +283,7 @@ function renderDetail(container, detail) {
   const yearsSection = document.createElement('div');
   yearsSection.innerHTML = '<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Popularity by year</h3>';
   const yearsList = document.createElement('div');
-  yearsList.className = 'mt-2 space-y-1';
+  yearsList.className = 'mt-2 max-h-64 space-y-1 overflow-y-auto';
   detail.yearStats.forEach(stat => {
     const row = document.createElement('div');
     row.className = 'flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm';
@@ -229,8 +324,12 @@ els.tabYear.addEventListener('click', () => setTab('year'));
 els.randomBtn.addEventListener('click', () => runRandom().catch(showError));
 els.yearSelect.addEventListener('change', () => loadPopularity().catch(showError));
 els.yearGender.addEventListener('change', () => loadPopularity().catch(showError));
+els.yearLimit.addEventListener('change', () => loadPopularity().catch(showError));
 els.searchInput.addEventListener('input', scheduleSearch);
 document.querySelectorAll('input[name="gender"]').forEach(input => {
+  input.addEventListener('change', scheduleSearch);
+});
+document.querySelectorAll('input[name="rarity"]').forEach(input => {
   input.addEventListener('change', scheduleSearch);
 });
 

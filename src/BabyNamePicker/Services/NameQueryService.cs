@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BabyNamePicker.Data;
 using BabyNamePicker.Models;
 using BabyNamePicker.Models.Dtos;
@@ -10,14 +11,17 @@ public sealed class NameQueryService(AppDbContext db)
     public async Task<IReadOnlyList<NameSummaryDto>> SearchAsync(
         string? query,
         string? gender,
+        string? rarity,
         CancellationToken cancellationToken = default)
     {
         var names = db.Names
             .AsNoTracking()
             .Include(n => n.Nicknames)
+            .Include(n => n.YearStats)
             .AsQueryable();
 
         names = ApplyGenderFilter(names, gender);
+        names = ApplyRarityFilter(names, rarity);
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -41,6 +45,7 @@ public sealed class NameQueryService(AppDbContext db)
             .AsNoTracking()
             .Include(n => n.Nicknames)
             .Include(n => n.YearStats)
+            .Include(n => n.Metadata)
             .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
         return name is null ? null : ToDetail(name);
@@ -49,13 +54,16 @@ public sealed class NameQueryService(AppDbContext db)
     public async Task<NameDetailDto?> GetRandomAsync(
         string? query,
         string? gender,
+        string? rarity,
         CancellationToken cancellationToken = default)
     {
         var names = db.Names
             .AsNoTracking()
             .Include(n => n.Nicknames)
+            .Include(n => n.YearStats)
             .AsQueryable();
         names = ApplyGenderFilter(names, gender);
+        names = ApplyRarityFilter(names, rarity);
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -89,8 +97,10 @@ public sealed class NameQueryService(AppDbContext db)
     public async Task<IReadOnlyList<PopularityEntryDto>> GetPopularityAsync(
         int year,
         string? gender,
+        int limit,
         CancellationToken cancellationToken = default)
     {
+        var cappedLimit = Math.Clamp(limit, 1, 1000);
         var stats = db.NameYearStats
             .AsNoTracking()
             .Include(s => s.Name)
@@ -106,7 +116,7 @@ public sealed class NameQueryService(AppDbContext db)
         var rows = await stats
             .OrderBy(s => s.Rank)
             .ThenBy(s => s.Name.Name)
-            .Take(100)
+            .Take(cappedLimit)
             .ToListAsync(cancellationToken);
 
         return rows.Select(s => new PopularityEntryDto(
@@ -115,6 +125,13 @@ public sealed class NameQueryService(AppDbContext db)
             s.Name.Gender.ToString(),
             s.Name.MaleShare,
             s.Count)).ToList();
+    }
+
+    public async Task<EnrichmentStatusDto> GetEnrichmentStatusAsync(CancellationToken cancellationToken = default)
+    {
+        var total = await db.Names.CountAsync(cancellationToken);
+        var enriched = await db.NameMetadata.CountAsync(cancellationToken);
+        return new EnrichmentStatusDto(total, enriched, total - enriched);
     }
 
     private static IQueryable<BabyName> ApplyGenderFilter(IQueryable<BabyName> query, string? gender)
@@ -132,16 +149,61 @@ public sealed class NameQueryService(AppDbContext db)
         };
     }
 
+    private static IQueryable<BabyName> ApplyRarityFilter(IQueryable<BabyName> query, string? rarity)
+    {
+        return rarity?.ToLowerInvariant() switch
+        {
+            "popular" => query.Where(n => n.YearStats.Any() && n.YearStats.Min(s => s.Rank) <= 100),
+            "familiar" => query.Where(n => n.YearStats.Any() &&
+                n.YearStats.Min(s => s.Rank) > 100 &&
+                n.YearStats.Min(s => s.Rank) <= 500),
+            "uncommon" => query.Where(n => n.YearStats.Any() && n.YearStats.Min(s => s.Rank) > 500),
+            _ => query
+        };
+    }
+
+    private static int? GetPeakRank(BabyName name) =>
+        name.YearStats.Count == 0 ? null : name.YearStats.Min(s => s.Rank);
+
     private static NameSummaryDto ToSummary(BabyName name) =>
-        new(name.Id, name.Name, name.Gender.ToString(), name.MaleShare,
+        new(name.Id, name.Name, name.Gender.ToString(), name.MaleShare, GetPeakRank(name),
             name.Nicknames.Select(n => n.Value).OrderBy(v => v).ToList());
 
     private static NameDetailDto ToDetail(BabyName name) =>
-        new(name.Id, name.Name, name.Gender.ToString(), name.MaleShare,
+        new(name.Id, name.Name, name.Gender.ToString(), name.MaleShare, GetPeakRank(name),
             name.Nicknames.Select(n => n.Value).OrderBy(v => v).ToList(),
             name.YearStats
                 .OrderByDescending(s => s.Year)
                 .ThenBy(s => s.Sex)
                 .Select(s => new YearStatDto(s.Year, s.Sex == SsaSex.Male ? "Male" : "Female", s.Rank, s.Count))
-                .ToList());
+                .ToList(),
+            name.Metadata is null ? null : ToMetadataDto(name.Metadata));
+
+    private static NameMetadataDto ToMetadataDto(NameMetadata metadata) =>
+        new(
+            metadata.Meaning,
+            DeserializeList(metadata.Origins),
+            metadata.Pronunciation,
+            metadata.Description,
+            DeserializeList(metadata.Themes),
+            DeserializeList(metadata.Variants),
+            metadata.EnrichmentSource,
+            metadata.EnrichedAt);
+
+    private static IReadOnlyList<string> DeserializeList(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [json];
+        }
+    }
 }

@@ -2,9 +2,9 @@ namespace BabyNamePicker.Services;
 
 public sealed class SsaImportOptions
 {
-    public int FromYear { get; set; } = 1950;
+    public int FromYear { get; set; } = 1880;
     public int? ToYear { get; set; }
-    public int TopPerSex { get; set; } = 100;
+    public int TopPerSex { get; set; } = 1000;
     public string? ZipPath { get; set; }
     public string? DataDirectory { get; set; }
     public bool DownloadIfMissing { get; set; } = true;

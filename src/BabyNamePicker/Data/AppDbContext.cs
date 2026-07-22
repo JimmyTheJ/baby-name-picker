@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BabyName> Names => Set<BabyName>();
     public DbSet<Nickname> Nicknames => Set<Nickname>();
     public DbSet<NameYearStat> NameYearStats => Set<NameYearStat>();
+    public DbSet<NameMetadata> NameMetadata => Set<NameMetadata>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,5 +37,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BabyName>()
             .HasMany(n => n.Nicknames)
             .WithMany(n => n.Names);
+
+        modelBuilder.Entity<NameMetadata>(entity =>
+        {
+            entity.HasIndex(m => m.NameId).IsUnique();
+            entity.Property(m => m.EnrichmentSource).HasMaxLength(128);
+            entity.HasOne(m => m.Name)
+                .WithOne(n => n.Metadata)
+                .HasForeignKey<NameMetadata>(m => m.NameId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

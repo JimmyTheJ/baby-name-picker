@@ -11,4 +11,5 @@ public class BabyName
 
     public ICollection<Nickname> Nicknames { get; set; } = [];
     public ICollection<NameYearStat> YearStats { get; set; } = [];
+    public NameMetadata? Metadata { get; set; }
 }

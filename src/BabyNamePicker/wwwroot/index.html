@@ -38,6 +38,16 @@
           class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none ring-blush-500 focus:border-blush-500 focus:ring-2">
 
         <fieldset class="mt-4">
+          <legend class="text-sm font-medium text-slate-700">Popularity</legend>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <label class="gender-chip"><input type="radio" name="rarity" value="Any" checked class="sr-only"><span>Any</span></label>
+            <label class="gender-chip"><input type="radio" name="rarity" value="Popular" class="sr-only"><span>Top 100</span></label>
+            <label class="gender-chip"><input type="radio" name="rarity" value="Familiar" class="sr-only"><span>101–500</span></label>
+            <label class="gender-chip"><input type="radio" name="rarity" value="Uncommon" class="sr-only"><span>501+</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="mt-4">
           <legend class="text-sm font-medium text-slate-700">Gender</legend>
           <div class="mt-2 flex flex-wrap gap-2">
             <label class="gender-chip"><input type="radio" name="gender" value="Any" checked class="sr-only"><span>Any</span></label>
@@ -57,7 +67,7 @@
 
     <section id="panel-year" class="hidden space-y-4">
       <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-3">
           <div>
             <label class="block text-sm font-medium text-slate-700" for="year-select">Year</label>
             <select id="year-select" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500"></select>
@@ -67,6 +77,14 @@
             <select id="year-gender" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500">
               <option value="Male">Boys</option>
               <option value="Female">Girls</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700" for="year-limit">Show</label>
+            <select id="year-limit" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500">
+              <option value="100">Top 100</option>
+              <option value="500">Top 500</option>
+              <option value="1000" selected>Top 1000</option>
             </select>
           </div>
         </div>
