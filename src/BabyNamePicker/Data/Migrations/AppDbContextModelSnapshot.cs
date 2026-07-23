@@ -181,13 +181,6 @@ namespace BabyNamePicker.Data.Migrations
                     b.Navigation("Name");
                 });
 
-            modelBuilder.Entity("BabyNamePicker.Models.BabyName", b =>
-                {
-                    b.Navigation("Metadata");
-
-                    b.Navigation("YearStats");
-                });
-
             modelBuilder.Entity("BabyNamePicker.Models.NameMetadata", b =>
                 {
                     b.HasOne("BabyNamePicker.Models.BabyName", "Name")
@@ -197,6 +190,13 @@ namespace BabyNamePicker.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Name");
+                });
+
+            modelBuilder.Entity("BabyNamePicker.Models.BabyName", b =>
+                {
+                    b.Navigation("Metadata");
+
+                    b.Navigation("YearStats");
                 });
 #pragma warning restore 612, 618
         }
