@@ -22,16 +22,39 @@ Open http://localhost:5000 (or the port shown in the console).
 
 On first run with an empty database, the app seeds from SSA data. It looks for data in this order:
 
-1. `data/names.zip` (official SSA archive — recommended for full 1950–latest history)
+1. `data/names.zip` (official SSA archive — recommended for full 1880–latest history)
 2. Automatic download from SSA (may be blocked in some environments)
 3. Bundled `data/ssa-sample/` (limited years for development)
 
-Download the official archive manually if needed:
+See [SSA data download](#ssa-data-download) for the official URL and `curl` commands.
+
+## SSA data download
+
+Baby names come from the [US Social Security Administration](https://www.ssa.gov/oact/babynames/) baby name popularity dataset. The app expects the official **`names.zip`** archive, which contains one `yobYYYY.txt` file per year (`Name,Sex,Count` per line).
+
+**Download URL:** https://www.ssa.gov/oact/babynames/names.zip
+
+Save it to `data/names.zip` in the repo root (create `data/` if needed), then import:
 
 ```bash
-# Save to data/names.zip, then run import
 dotnet run --project src/BabyNamePicker/BabyNamePicker.csproj -- import-ssa --from 1880 --top 1000
 ```
+
+**curl (Linux, macOS, Git Bash):**
+
+```bash
+mkdir -p data
+curl -fL -o data/names.zip https://www.ssa.gov/oact/babynames/names.zip
+```
+
+**PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path data | Out-Null
+curl.exe -fL -o data/names.zip https://www.ssa.gov/oact/babynames/names.zip
+```
+
+If automatic download works in your environment, you can skip the manual step — the importer will fetch `names.zip` on first run when the file is missing.
 
 ## Bulk SSA import
 
