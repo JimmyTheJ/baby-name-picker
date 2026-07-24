@@ -9,7 +9,7 @@ obj/
 *.db-shm
 *.db-wal
 
-appsettings.Development.json
+appsettings.*.json
 
 .DS_Store
 Thumbs.db
