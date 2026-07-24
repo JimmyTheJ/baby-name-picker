@@ -1,12 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY BabyNamePicker.sln ./
-COPY src/BabyNamePicker/BabyNamePicker.csproj src/BabyNamePicker/
-COPY data/nicknames.json data/
-COPY data/ssa-sample/ data/ssa-sample/
-RUN dotnet restore src/BabyNamePicker/BabyNamePicker.csproj
-COPY src/BabyNamePicker/ src/BabyNamePicker/
-RUN dotnet publish src/BabyNamePicker/BabyNamePicker.csproj -c Release -o /app/publish /p:UseAppHost=false
+COPY src/BabyNamePicker.slnx ./
+COPY src/BabyNamePicker/BabyNamePicker.csproj BabyNamePicker/
+COPY data/ /data/
+RUN dotnet restore BabyNamePicker.slnx
+COPY src/BabyNamePicker/ BabyNamePicker/
+RUN dotnet publish BabyNamePicker/BabyNamePicker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
