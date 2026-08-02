@@ -14,7 +14,12 @@ public sealed class NameEnrichmentService(
     ILogger<NameEnrichmentService> logger)
 {
     private const string SystemPrompt = """
-        You are a baby name expert. Respond with valid JSON only — no markdown fences, no commentary.
+        You are a baby name expert. Respond with a single valid JSON object only — no markdown fences, no commentary.
+        Rules:
+        - Use double quotes for all keys and string values.
+        - Put commas between every property and every array element.
+        - Do not put raw line breaks inside strings; keep each string on one line.
+        - Escape any special characters inside strings (use \\n if a newline is required).
         Use this exact schema:
         {
           "meaning": "brief meaning",
@@ -27,6 +32,8 @@ public sealed class NameEnrichmentService(
         }
         Only include real, commonly used nicknames and variants. If unsure, use empty arrays.
         """;
+
+    private const int MaxAttempts = 2;
 
     public async Task<EnrichNamesResult> EnrichBatchAsync(
         EnrichNamesOptions options,
@@ -90,8 +97,7 @@ public sealed class NameEnrichmentService(
         };
 
         var userPrompt = $"Enrich the baby name \"{name.Name}\" (typically a {genderHint} name).";
-        var raw = await llm.CompleteAsync(SystemPrompt, userPrompt, cancellationToken);
-        var parsed = ParseEnrichmentResponse(raw);
+        var parsed = await CompleteAndParseAsync(llm, name.Name, userPrompt, cancellationToken);
 
         var source = $"{llmOptions.Value.Provider}:{llmOptions.Value.Model}";
         if (name.Metadata is null)
@@ -112,6 +118,47 @@ public sealed class NameEnrichmentService(
 
         await AddNicknamesAsync(name, parsed.Nicknames, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<EnrichmentPayload> CompleteAndParseAsync(
+        ILlmClient llm,
+        string name,
+        string userPrompt,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastError = null;
+        string? lastRaw = null;
+
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            var prompt = attempt == 1
+                ? userPrompt
+                : $"""
+                  Your previous reply for the baby name "{name}" was not valid JSON.
+                  Reply again with ONLY one JSON object matching the schema. No markdown, no commentary.
+                  Previous reply was:
+                  {Truncate(lastRaw, 1200)}
+                  """;
+
+            lastRaw = await llm.CompleteAsync(SystemPrompt, prompt, cancellationToken);
+
+            try
+            {
+                return ParseEnrichmentResponse(lastRaw);
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+            {
+                lastError = ex;
+                logger.LogDebug(
+                    ex,
+                    "Enrichment JSON parse failed for {Name} (attempt {Attempt}/{Max})",
+                    name,
+                    attempt,
+                    MaxAttempts);
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("LLM response did not contain JSON.");
     }
 
     private async Task AddNicknamesAsync(
@@ -142,37 +189,17 @@ public sealed class NameEnrichmentService(
         }
     }
 
-    private static EnrichmentPayload ParseEnrichmentResponse(string raw)
-    {
-        var json = ExtractJson(raw);
-        var parsed = JsonSerializer.Deserialize<EnrichmentPayload>(
-            json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    private static EnrichmentPayload ParseEnrichmentResponse(string raw) =>
+        LlmJson.Deserialize<EnrichmentPayload>(raw);
 
-        return parsed ?? new EnrichmentPayload();
-    }
-
-    private static string ExtractJson(string raw)
+    private static string Truncate(string? value, int maxChars)
     {
-        var trimmed = raw.Trim();
-        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        if (string.IsNullOrEmpty(value) || value.Length <= maxChars)
         {
-            var start = trimmed.IndexOf('\n') + 1;
-            var end = trimmed.LastIndexOf("```", StringComparison.Ordinal);
-            if (start > 0 && end > start)
-            {
-                trimmed = trimmed[start..end].Trim();
-            }
+            return value ?? string.Empty;
         }
 
-        var objectStart = trimmed.IndexOf('{');
-        var objectEnd = trimmed.LastIndexOf('}');
-        if (objectStart >= 0 && objectEnd > objectStart)
-        {
-            return trimmed[objectStart..(objectEnd + 1)];
-        }
-
-        throw new InvalidOperationException("LLM response did not contain JSON.");
+        return value[..maxChars] + "…";
     }
 
     private ILlmClient CreateClient(string? providerOverride)
