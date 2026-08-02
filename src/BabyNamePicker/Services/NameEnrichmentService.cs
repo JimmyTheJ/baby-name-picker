@@ -11,6 +11,7 @@ public sealed class NameEnrichmentService(
     AppDbContext db,
     IHttpClientFactory httpClientFactory,
     IOptions<LlmOptions> llmOptions,
+    AdminLogHub logHub,
     ILogger<NameEnrichmentService> logger)
 {
     private const string SystemPrompt = """
@@ -42,6 +43,8 @@ public sealed class NameEnrichmentService(
         var llm = CreateClient(options.Provider);
         var names = await GetNamesToEnrichAsync(options, cancellationToken);
 
+        logHub.Info("Enrich", $"Starting nickname/metadata enrichment: {names.Count} name(s), force={options.Force}");
+
         var enriched = 0;
         var failed = 0;
         var errors = new List<string>();
@@ -54,6 +57,7 @@ public sealed class NameEnrichmentService(
             {
                 await EnrichNameAsync(name, llm, cancellationToken);
                 enriched++;
+                logHub.Info("Enrich", $"Enriched {name.Name}");
             }
             catch (Exception ex)
             {
@@ -61,9 +65,11 @@ public sealed class NameEnrichmentService(
                 var message = $"{name.Name}: {ex.Message}";
                 errors.Add(message);
                 logger.LogWarning(ex, "Failed to enrich name {Name}", name.Name);
+                logHub.Warning("Enrich", message);
             }
         }
 
+        logHub.Info("Enrich", $"Complete: {enriched}/{names.Count} succeeded, {failed} failed.");
         return new EnrichNamesResult(names.Count, enriched, failed, errors);
     }
 

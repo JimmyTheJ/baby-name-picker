@@ -6,6 +6,11 @@ public class BabyName
     public required string Name { get; set; }
     public BabyGender Gender { get; set; }
     public double MaleShare { get; set; }
+
+    /// <summary>How gender was last set: "ssa" (import) or "llm:&lt;provider&gt;:&lt;model&gt;".</summary>
+    public string? GenderSource { get; set; }
+
+    public DateTime? GenderEnrichedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

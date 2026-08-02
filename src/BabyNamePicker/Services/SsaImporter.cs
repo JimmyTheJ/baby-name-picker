@@ -126,6 +126,9 @@ public sealed class SsaImporter(
             var entity = await db.Names.FirstAsync(n => n.Name == name, cancellationToken);
             entity.Gender = gender;
             entity.MaleShare = maleShare;
+            // Import refreshes SSA math; clear LLM override so reclassify can run again if desired.
+            entity.GenderSource = "ssa";
+            entity.GenderEnrichedAt = null;
             entity.UpdatedAt = DateTime.UtcNow;
         }
 

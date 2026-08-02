@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Baby Name Picker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            blush: { 50: '#fff7fb', 100: '#ffe8f3', 500: '#ec4899', 600: '#db2777', 700: '#be185d' },
+            sky: { 50: '#f0f9ff', 500: '#0ea5e9', 600: '#0284c7' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="min-h-screen bg-gradient-to-b from-blush-50 via-white to-sky-50 text-slate-800">
+  <div class="mx-auto max-w-5xl px-4 py-6">
+    <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="text-sm font-medium text-slate-500"><a href="/" class="hover:text-blush-600">← Baby Name Picker</a></p>
+        <h1 class="text-2xl font-bold tracking-tight text-blush-700 sm:text-3xl">Admin</h1>
+      </div>
+      <div id="session-bar" class="hidden items-center gap-3">
+        <span id="session-user" class="text-sm text-slate-600"></span>
+        <button id="logout-btn" type="button" class="btn-secondary text-sm">Log out</button>
+      </div>
+    </header>
+
+    <section id="disabled-panel" class="hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-lg font-semibold text-slate-800">Admin disabled</h2>
+      <p class="mt-2 text-slate-600">Set <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">ADMIN_PASSWORD</code> in <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">.env</code> and restart the app to enable admin login.</p>
+    </section>
+
+    <section id="login-panel" class="hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h2 class="text-lg font-semibold text-slate-800">Sign in</h2>
+      <p class="mt-1 text-sm text-slate-600">Required to run LLM enrichment pipelines.</p>
+      <form id="login-form" class="mt-4 space-y-4 max-w-sm">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="login-username">Username</label>
+          <input id="login-username" name="username" autocomplete="username" value="admin"
+            class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blush-500 focus:ring-2 focus:ring-blush-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required
+            class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blush-500 focus:ring-2 focus:ring-blush-500">
+        </div>
+        <p id="login-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit" class="btn-primary">Log in</button>
+      </form>
+    </section>
+
+    <section id="console-panel" class="hidden space-y-6">
+      <div class="grid gap-4 lg:grid-cols-2">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+          <h2 class="text-lg font-semibold text-slate-800">Nickname / metadata enrichment</h2>
+          <p class="mt-1 text-sm text-slate-600">LLM fills meanings, origins, themes, and nicknames.</p>
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700" for="enrich-batch">Batch size</label>
+              <input id="enrich-batch" type="number" min="1" max="500" value="25"
+                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+              <div id="enrich-batch-suggestions" class="mt-2 flex flex-wrap gap-2"></div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700" for="enrich-provider">Provider override</label>
+              <select id="enrich-provider" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+                <option value="">Configured default</option>
+              </select>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input id="enrich-force" type="checkbox" class="rounded border-slate-300">
+              Force re-enrich names that already have metadata
+            </label>
+            <p id="enrich-status" class="text-sm text-slate-500"></p>
+            <button id="enrich-run" type="button" class="btn-primary">Run enrichment</button>
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
+          <h2 class="text-lg font-semibold text-slate-800">Gender / unisex recalculator</h2>
+          <p class="mt-1 text-sm text-slate-600">LLM reclassifies cultural gender perception (overrides SSA-derived gender).</p>
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700" for="gender-batch">Batch size</label>
+              <input id="gender-batch" type="number" min="1" max="500" value="25"
+                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+              <div id="gender-batch-suggestions" class="mt-2 flex flex-wrap gap-2"></div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700" for="gender-filter">Filter</label>
+              <select id="gender-filter" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"></select>
+              <div id="gender-filter-suggestions" class="mt-2 flex flex-wrap gap-2"></div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700" for="gender-provider">Provider override</label>
+              <select id="gender-provider" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+                <option value="">Configured default</option>
+              </select>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input id="gender-force" type="checkbox" class="rounded border-slate-300">
+              Force reclassify names already LLM-tagged
+            </label>
+            <button id="gender-run" type="button" class="btn-primary">Run gender recalculator</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-slate-950 p-4 shadow-sm ring-1 ring-slate-800 sm:p-5">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="font-mono text-sm font-semibold text-emerald-400">Console</h2>
+          <div class="flex gap-2">
+            <button id="console-clear" type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 font-mono text-xs text-slate-300 hover:bg-slate-900">Clear</button>
+          </div>
+        </div>
+        <pre id="console-output" class="admin-console max-h-[28rem] overflow-auto font-mono text-xs leading-relaxed text-slate-200"></pre>
+      </div>
+    </section>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

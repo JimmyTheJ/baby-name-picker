@@ -7,9 +7,10 @@ A Dockerized baby name explorer built with .NET 10, SQLite, and a mobile-friendl
 - Search names and nicknames with gender and popularity filters (Boy, Girl, Unisex, Any; Top 100 / 101–500 / 501+)
 - Random name picker with the same filters
 - Browse SSA names per year and gender (top 100, 500, or 1000)
-- Unisex classification with male-share slant indicator
+- Unisex classification with male-share slant indicator (SSA math on import; optional LLM cultural reclassification via admin)
 - SSA data seeding from official US Social Security Administration rankings (1880–latest, top 1000 per sex by default)
 - LLM enrichment for meanings, origins, nicknames, and themes (Ollama or OpenAI)
+- Optional admin console for LLM pipelines (env-gated password; rate-limited login)
 
 ## Quick start (local)
 
@@ -70,7 +71,7 @@ Options:
 - `--zip PATH` — use a local `names.zip` instead of downloading
 - `--dir PATH` — import from a folder of `yobYYYY.txt` files
 
-Admin API (POST): `/api/admin/import-ssa` with optional JSON body matching `SsaImportOptions`.
+Admin API (POST, auth required): `/api/admin/import-ssa` with optional JSON body matching `SsaImportOptions`.
 
 ## LLM enrichment
 
@@ -124,9 +125,45 @@ Options:
 - `--force` — re-enrich names that already have metadata
 - `--all` — (scripts only) keep running batches until no names remain
 
-Admin API (POST): `/api/admin/enrich-names` with optional JSON body `{ "batchSize": 25, "force": false }`.
+Admin API (POST, auth required): `/api/admin/enrich-names` with optional JSON body `{ "batchSize": 25, "force": false }`.
 
-Check progress: `GET /api/admin/enrichment-status`.
+Check progress: `GET /api/admin/enrichment-status` (auth required).
+
+## Admin (optional)
+
+Admin is **disabled by default**. Set a password in `.env` to enable login and create/sync the admin account on startup:
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-strong-password
+```
+
+- If `ADMIN_PASSWORD` is empty or missing, no admin user is created and `/admin` shows as disabled.
+- If the password is set and the user does not exist, it is created.
+- If the password is set and the user exists, the stored hash is synced from `.env` (env is source of truth).
+
+Open **http://localhost:5000/admin** (or `/admin.html`). Login is rate-limited (5 attempts per IP per 15 minutes).
+
+From the admin console you can:
+
+1. **Nickname / metadata enrichment** — existing LLM pipeline (batch size, force, provider override)
+2. **Gender / unisex recalculator** — LLM overrides cultural gender + maleShare (SSA year stats stay for popularity)
+
+CLI for gender recalculation:
+
+```bash
+dotnet run --project src/BabyNamePicker/BabyNamePicker.csproj -- reclassify-gender --batch 25 --filter UnisexOnly
+```
+
+Filters: `All`, `UnisexOnly` (default), `Conflict` (near SSA unisex threshold).
+
+Authenticated admin APIs:
+
+- `GET /api/admin/status` — `{ enabled, authenticated }` (public)
+- `POST /api/admin/login` / `POST /api/admin/logout`
+- `GET /api/admin/pipeline-defaults`
+- `GET /api/admin/logs` · `GET /api/admin/logs/stream` (SSE) · `DELETE /api/admin/logs`
+- `POST /api/admin/enrich-names` · `POST /api/admin/reclassify-gender` · `POST /api/admin/import-ssa`
 
 ## Docker
 
@@ -156,7 +193,7 @@ Service and container names are prefixed (`baby-name-picker`) to avoid collision
 - **NameYearStats** — rank and count per name/year/sex
 - **NameMetadata** — LLM-enriched meaning, origin, pronunciation, themes, variants
 
-Unisex names are classified when the minority gender share is at least 15% across imported SSA data.
+Unisex names are classified on SSA import when the minority gender share is at least 15%. The admin LLM gender recalculator can override `Gender` and `MaleShare` based on cultural perception; SSA year stats remain for popularity rankings.
 
 ## Project layout
 
@@ -166,7 +203,7 @@ baby-name-picker/
     BabyNamePicker.slnx
     BabyNamePicker/       # ASP.NET Core app
   data/nicknames.json     # curated nickname seed data
-  .env.example            # Docker network + LLM config template
+  .env.example            # Docker network + LLM + optional admin password
   setup.ps1 / setup.sh    # create .env + shared Docker network
   enrich-names.ps1 / .sh  # run LLM enrichment in the Docker container
   Dockerfile

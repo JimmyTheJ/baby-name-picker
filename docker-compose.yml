@@ -13,6 +13,8 @@ services:
       Llm__BaseUrl: ${LLM_BASE_URL:-http://ollama:11434}
       Llm__Model: ${LLM_MODEL:-llama3.2}
       Llm__ApiKey: ${LLM_API_KEY:-}
+      Admin__Username: ${ADMIN_USERNAME:-admin}
+      Admin__Password: ${ADMIN_PASSWORD:-}
     networks:
       - shared
     restart: unless-stopped

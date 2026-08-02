@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Nickname> Nicknames => Set<Nickname>();
     public DbSet<NameYearStat> NameYearStats => Set<NameYearStat>();
     public DbSet<NameMetadata> NameMetadata => Set<NameMetadata>();
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -17,6 +18,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(n => n.Name).IsUnique();
             entity.Property(n => n.Name).HasMaxLength(64);
             entity.Property(n => n.MaleShare).HasPrecision(5, 4);
+            entity.Property(n => n.GenderSource).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<AdminUser>(entity =>
+        {
+            entity.HasIndex(u => u.Username).IsUnique();
+            entity.Property(u => u.Username).HasMaxLength(64);
+            entity.Property(u => u.PasswordHash).HasMaxLength(256);
         });
 
         modelBuilder.Entity<Nickname>(entity =>

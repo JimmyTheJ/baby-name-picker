@@ -32,6 +32,36 @@ namespace BabyNamePicker.Data.Migrations
                     b.ToTable("BabyNameNickname");
                 });
 
+            modelBuilder.Entity("BabyNamePicker.Models.AdminUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("AdminUsers");
+                });
+
             modelBuilder.Entity("BabyNamePicker.Models.BabyName", b =>
                 {
                     b.Property<int>("Id")
@@ -43,6 +73,13 @@ namespace BabyNamePicker.Data.Migrations
 
                     b.Property<int>("Gender")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("GenderEnrichedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GenderSource")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
 
                     b.Property<double>("MaleShare")
                         .HasPrecision(5, 4)
