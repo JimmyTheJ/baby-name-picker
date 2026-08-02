@@ -107,11 +107,14 @@ Check progress: `GET /api/admin/enrichment-status`.
 
 ## Docker
 
-Create the shared network once:
+Copy env defaults and create the shared Docker network (once):
 
 ```bash
-docker network create workspace
+cp .env.example .env   # or: copy .env.example .env
+./setup.sh             # or: .\setup.ps1
 ```
+
+`DOCKER_SHARED_NETWORK` in `.env` names the external network (default `workspace`). Setup creates that network if it does not exist.
 
 Build and run:
 
@@ -121,7 +124,7 @@ docker compose up --build
 
 The app listens on port **8080**. SQLite data is stored in the `baby-name-picker-data` volume at `/data/babynames.db`.
 
-Service and container names are prefixed (`baby-name-picker`) to avoid collisions on the shared `workspace` network.
+Service and container names are prefixed (`baby-name-picker`) to avoid collisions on the shared network.
 
 ## Data model
 
@@ -140,6 +143,9 @@ baby-name-picker/
     BabyNamePicker.slnx
     BabyNamePicker/       # ASP.NET Core app
   data/nicknames.json     # curated nickname seed data
+  .env.example            # Docker shared-network config template
+  setup.ps1 / setup.sh    # create .env + shared Docker network
   Dockerfile
   docker-compose.yml
 ```
+
