@@ -16,3 +16,5 @@ appsettings.*.json
 .DS_Store
 Thumbs.db
 
+data/*.zip
+data/yob*.txt
