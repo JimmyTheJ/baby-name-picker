@@ -74,7 +74,21 @@ Admin API (POST): `/api/admin/import-ssa` with optional JSON body matching `SsaI
 
 ## LLM enrichment
 
-Configure in `appsettings.json` or environment variables:
+Configure via the repo-root `.env` (recommended), `appsettings.json`, or environment variables.
+
+`.env` (see `.env.example`):
+
+```env
+LLM_PROVIDER=Ollama
+LLM_BASE_URL=http://ollama:11434
+LLM_MODEL=llama3.2
+LLM_API_KEY=
+```
+
+- **Docker:** Compose maps these to `Llm__*` for the container. Use `http://ollama:11434` when Ollama is on the shared Docker network.
+- **Local:** `dotnet run` loads `.env` from the repo root (existing env vars win). Use `http://localhost:11434` if Ollama is on the host.
+
+Equivalent `appsettings.json`:
 
 ```json
 {
@@ -87,7 +101,7 @@ Configure in `appsettings.json` or environment variables:
 }
 ```
 
-Set `Provider` to `OpenAI` and provide `ApiKey` for cloud enrichment. `Model` defaults work with `gpt-4o-mini` for OpenAI.
+Set `Provider` / `LLM_PROVIDER` to `OpenAI` and provide `ApiKey` / `LLM_API_KEY` for cloud enrichment. `Model` defaults work with `gpt-4o-mini` for OpenAI.
 
 Batch enrich names (meanings, origins, nicknames, themes):
 
@@ -95,11 +109,20 @@ Batch enrich names (meanings, origins, nicknames, themes):
 dotnet run --project src/BabyNamePicker/BabyNamePicker.csproj -- enrich-names --batch 25
 ```
 
+Docker (container must be running):
+
+```bash
+./enrich-names.sh --batch 50
+.\enrich-names.ps1 --batch 50
+./enrich-names.sh --all --batch 50   # repeat until nothing left
+```
+
 Options:
 
 - `--batch N` — names per run (default 25)
 - `--provider Ollama|OpenAI` — override configured provider
 - `--force` — re-enrich names that already have metadata
+- `--all` — (scripts only) keep running batches until no names remain
 
 Admin API (POST): `/api/admin/enrich-names` with optional JSON body `{ "batchSize": 25, "force": false }`.
 
@@ -143,8 +166,9 @@ baby-name-picker/
     BabyNamePicker.slnx
     BabyNamePicker/       # ASP.NET Core app
   data/nicknames.json     # curated nickname seed data
-  .env.example            # Docker shared-network config template
+  .env.example            # Docker network + LLM config template
   setup.ps1 / setup.sh    # create .env + shared Docker network
+  enrich-names.ps1 / .sh  # run LLM enrichment in the Docker container
   Dockerfile
   docker-compose.yml
 ```

@@ -4,6 +4,8 @@ using BabyNamePicker.Services.Llm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
+LoadDotEnvFromAncestors();
+
 if (args.Length > 0 && args[0].Equals("import-ssa", StringComparison.OrdinalIgnoreCase))
 {
     await RunImportCommandAsync(args[1..]);
@@ -205,4 +207,64 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 
     var nicknameSeeder = scope.ServiceProvider.GetRequiredService<NicknameSeeder>();
     await nicknameSeeder.SeedAsync();
+}
+
+// Loads repo-root .env into the process environment so local runs pick up the same
+// LLM_* settings as Docker Compose. Existing environment variables win.
+// Friendly LLM_* keys are mapped to ASP.NET Core's Llm__* configuration names.
+static void LoadDotEnvFromAncestors()
+{
+    var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+    while (dir is not null)
+    {
+        var path = Path.Combine(dir.FullName, ".env");
+        if (File.Exists(path))
+        {
+            ApplyDotEnv(path);
+            return;
+        }
+
+        dir = dir.Parent;
+    }
+}
+
+static void ApplyDotEnv(string path)
+{
+    foreach (var rawLine in File.ReadAllLines(path))
+    {
+        var line = rawLine.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+        {
+            continue;
+        }
+
+        var eq = line.IndexOf('=');
+        if (eq <= 0)
+        {
+            continue;
+        }
+
+        var key = line[..eq].Trim();
+        var value = line[(eq + 1)..].Trim();
+        if (value.Length >= 2 &&
+            ((value.StartsWith('"') && value.EndsWith('"')) ||
+             (value.StartsWith('\'') && value.EndsWith('\''))))
+        {
+            value = value[1..^1];
+        }
+
+        key = key switch
+        {
+            "LLM_PROVIDER" => "Llm__Provider",
+            "LLM_BASE_URL" => "Llm__BaseUrl",
+            "LLM_MODEL" => "Llm__Model",
+            "LLM_API_KEY" => "Llm__ApiKey",
+            _ => key
+        };
+
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+        {
+            Environment.SetEnvironmentVariable(key, value);
+        }
+    }
 }

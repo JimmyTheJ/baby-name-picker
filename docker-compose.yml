@@ -9,6 +9,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: Data Source=/data/babynames.db
+      Llm__Provider: ${LLM_PROVIDER:-Ollama}
+      Llm__BaseUrl: ${LLM_BASE_URL:-http://ollama:11434}
+      Llm__Model: ${LLM_MODEL:-llama3.2}
+      Llm__ApiKey: ${LLM_API_KEY:-}
     networks:
       - shared
     restart: unless-stopped
